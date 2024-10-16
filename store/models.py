@@ -4,8 +4,7 @@ from django.contrib.auth.models import User
 
 from embed_video.fields import EmbedVideoField
 
-# Create your models here.
-
+# request.user
 class BaseModel(models.Model):
 
     created_date=models.DateTimeField(auto_now_add=True)
@@ -14,38 +13,36 @@ class BaseModel(models.Model):
 
     is_active=models.BooleanField(default=True)
 
-
+# UserProfile.objects.filter(owner=request.user)
+# request.user.profile.profile_picture
 class UserProfile(BaseModel):
 
     bio=models.CharField(max_length=200)
 
-    contact=models.IntegerField()
+    profile_picture=models.ImageField(upload_to="profilepictures",null=True,blank=True)
 
-    profile_picture=models.Imagefield(upload_to='profilepictures',null=True,blank=True)
+    phone=models.CharField(max_length=200)
 
     owner=models.OneToOneField(User,on_delete=models.CASCADE,related_name="profile")
 
-    def __str__(self):
-
+    def __str__(self) -> str:
         return self.owner.username
 
 
-class Tags(BaseModel):
+class Tag(BaseModel):
 
     title=models.CharField(max_length=200)
 
-    def __str__(self):
-
-        return title
-
-
+    def __str__(self) -> str:
+        return self.title
+    
 class Project(BaseModel):
 
     title=models.CharField(max_length=200)
 
-    description=models.TextField(max_length=200)  
+    description=models.TextField()
 
-    preview_img=models.ImageField(upload_to="previewimages",null=True,blank=True)
+    preview_image=models.ImageField(upload_to="previewimages",null=True,blank=True)
 
     price=models.PositiveIntegerField()
 
@@ -53,11 +50,12 @@ class Project(BaseModel):
 
     files=models.FileField(upload_to="projects",null=True,blank=True)
 
-    tag_obj=models.ManyToManyField(Tags,null=True) 
+    tag_objects=models.ManyToManyField(Tag,null=True)
 
-    thumbnail=EmbedVideoField() 
+    thumbnail=EmbedVideoField()
 
-
+# WishList.objects.filter(owner=request.user)
+# request.user.basket
 class WishList(BaseModel):
 
     owner=models.OneToOneField(User,on_delete=models.CASCADE,related_name="basket")
@@ -65,24 +63,32 @@ class WishList(BaseModel):
 
 class WishListItem(BaseModel):
 
-    WishList_obj=models.ForeignKey(WishList,on_delete=models.CASCADE,related_name="basket-item")
+    wishlist_object=models.ForeignKey(WishList,on_delete=models.CASCADE,related_name="basket-item")
 
-    project_obj=models.ForeignKey(project,on_delete=models.CASCADE)
+    project_object=models.ForeignKey(Project,on_delete=models.CASCADE)
 
     is_order_placed=models.BooleanField(default=False)
-
-
+# WishListItems.objects.filter(wishlist_object__owner=request.user,is_order_placed=False)
 class Order(BaseModel):
 
-    wishlistitem_obj=models.ManyToManyField(WishListItem)
+    wishlist_item_objects=models.ManyToManyField(WishListItem)
 
-    is_paid=models.BooleanField(max_length=200,null=True)
+    is_paid=models.BooleanField(default=False)
 
     order_id=models.CharField(max_length=200,null=True)
 
     
 
 
-        
+
 
     
+
+
+
+
+
+
+
+
+

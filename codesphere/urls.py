@@ -21,4 +21,6 @@ from store import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('register/',views.SignUpview.as_view(),name="register"),
+    path('login/',views.SigninView.as_view(),name="login"),
+    path('index/',views.Indexview.as_view(),name="index"),
 ]

@@ -13,3 +13,10 @@ class SignUpForm(UserCreationForm):
         fields=["username","email","password1","password2"]
 
 
+class SignInform(forms.Form):
+
+    username=forms.CharField(max_length=200)
+
+    password=forms.CharField(widget=forms.PasswordInput())        
+
+

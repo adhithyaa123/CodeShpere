@@ -16,6 +16,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from django.conf import settings
+from django.conf.urls.static import static
+
 from store import views 
 
 urlpatterns = [
@@ -23,4 +26,12 @@ urlpatterns = [
     path('register/',views.SignUpview.as_view(),name="register"),
     path('login/',views.SigninView.as_view(),name="login"),
     path('index/',views.Indexview.as_view(),name="index"),
-]
+    path('logout/',views.logout_view.as_view(),name="logout"),
+    path('profile/edit',views.ProfileEditView.as_view(),name="profile-edit"),
+    path('project/add',views.ProjectCreateView.as_view(),name='project-create'),
+    path('mywork/all',views.MyprojectListView.as_view(),name="my-work"),
+    path('project/<int:pk>/change',views.ProjectUpdateView.as_view(),name='project-change'),
+    path('project/<int:pk>/detail',views.ProjectDetailView.as_view(),name='project-detail'),
+
+
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

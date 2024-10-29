@@ -10,6 +10,8 @@
 <div class="w-1/2 mx-auto">
 
     <a href="#" class="group relative block overflow-hidden">
+
+      <form action="{%url 'wishlist' p.id%}" >
         <button
           class="absolute end-4 top-4 z-10 rounded-full bg-white p-1.5 text-gray-900 transition hover:text-gray-900/75"
         >
@@ -30,6 +32,7 @@
             />
           </svg>
         </button>
+      </form>
       
         <img
           src="{{p.preview_image.url}}"

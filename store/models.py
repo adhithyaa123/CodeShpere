@@ -68,6 +68,12 @@ class WishListItem(BaseModel):
     project_object=models.ForeignKey(Project,on_delete=models.CASCADE)
 
     is_order_placed=models.BooleanField(default=False)
+
+
+    class Meta:
+
+        unique_together=("wishlist_object","project_object")
+        
 # WishListItems.objects.filter(wishlist_object__owner=request.user,is_order_placed=False)
 class Order(BaseModel):
 

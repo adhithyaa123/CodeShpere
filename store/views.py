@@ -1,4 +1,4 @@
-from django.shortcuts import render,redirect
+from django.shortcuts import render,redirect,get_object_or_404
 
 from django.urls import reverse_lazy
 
@@ -9,6 +9,8 @@ from django.contrib.auth import authenticate,login,logout
 from store.models import Project
 
 from django.views.generic import View,FormView,CreateView,TemplateView
+
+from django.contrib import messages
 
 
 
@@ -188,5 +190,38 @@ class ProjectDetailView(View):
         return render(request,self.template_name,{"data":qs})
 
 
+class AddWishListItemView(View):
 
+    def get(self,request,*args,**kwargs):
+
+        id=kwargs.get("pk")
+
+        project_object=get_object_or_404(Project,id=id)
+
+        try:
+
+            request.user.basket.basket_item.create(project_object=project_object)
+
+            print("wish list item added")
+
+            messages.success(request,"added success to wishlist")
+
+        except Exception as e:
+
+            messages.error(request,"failed")
+    
+
+        return redirect("index")
         
+
+
+class MyListWishListView(View):
+
+    template_name="mywishlist.html"
+
+    def get(self,request,*args,**kwargs):
+
+            qs=request.user.basket.basket_item.filter(is_order_placed=False)            
+
+            return render(request,self.template_name,{"data":qs})
+

@@ -42,3 +42,14 @@ class ProjectForm(forms.ModelForm):
                 "files","tag_objects","thumbnail",]
                 
 
+class PasswordResetForm(forms.Form):
+
+    username=forms.CharField()
+
+    email=forms.EmailField()
+
+    password1=forms.CharField()
+
+    password2=forms.CharField()
+
+    

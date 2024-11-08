@@ -2,19 +2,40 @@ from django.shortcuts import render,redirect,get_object_or_404
 
 from django.urls import reverse_lazy
 
-from store.forms import SignUpForm,SignInform,UserprofileForm,ProjectForm
+from store.forms import SignUpForm,SignInform,UserprofileForm,ProjectForm,PasswordResetForm
 
 from django.contrib.auth import authenticate,login,logout
 
-from store.models import Project
+from store.models import Project,WishListItem,Order
 
 from django.views.generic import View,FormView,CreateView,TemplateView
 
 from django.contrib import messages
 
+from django.utils.decorators import method_decorator
 
+from django.views.decorators.csrf import csrf_exempt
 
+from django.db.models import Sum
+
+from django.core.mail import send_mail
+
+from store.decorators import signin_required
+
+from django.views.decorators.cache import never_cache
+
+from decouple import config
 # Create your views here.
+
+def send_email():
+
+    send_mail(
+    "codehub project download",
+    "You have completed purchase of project.",
+    "uadhithya23@gmail.com",
+    ["adhithyau2003@gmail.com"],
+    fail_silently=False,
+)
 
 class SignUpview(CreateView):
 
@@ -53,6 +74,8 @@ class SigninView(FormView):
         return render(request,self.template_name,{"form":form_instance})        
 
 
+decs=[signin_required,never_cache]
+@method_decorator(decs,name="dispatch")
 class Indexview(TemplateView):
 
     template_name="index.html"
@@ -65,7 +88,7 @@ class Indexview(TemplateView):
 
 
     
-
+@method_decorator(decs,name="dispatch")
 class logout_view(View):
 
     def get(self,request,*args,**kwargs):
@@ -74,6 +97,7 @@ class logout_view(View):
 
         return redirect("login")
 
+@method_decorator(decs,name="dispatch")
 class ProfileEditView(View):
 
     template_name="profile_edit.html"
@@ -105,6 +129,7 @@ class ProfileEditView(View):
         return render(request,self.template_name,{"form":form_instance})
 
 
+@method_decorator(decs,name="dispatch")
 class ProjectCreateView(View):
 
     template_name="project_create.html"
@@ -133,7 +158,7 @@ class ProjectCreateView(View):
         return redirect(request,self.template_name,{"form":form_class})    
 
 
-
+@method_decorator(decs,name="dispatch")
 class MyprojectListView(View):
 
     template_name="my_project_list.html"
@@ -144,6 +169,8 @@ class MyprojectListView(View):
 
         return render(request,self.template_name,{"data":qs})
 
+
+@method_decorator(decs,name="dispatch")
 class ProjectUpdateView(View):
 
     template_name="project_update.html"
@@ -177,6 +204,7 @@ class ProjectUpdateView(View):
         return render(request,self.template_name,{"form":form_instance})
 
 
+@method_decorator(decs,name="dispatch")
 class ProjectDetailView(View):
 
     template_name="project_detail.html"
@@ -189,7 +217,7 @@ class ProjectDetailView(View):
 
         return render(request,self.template_name,{"data":qs})
 
-
+@method_decorator(decs,name="dispatch")
 class AddWishListItemView(View):
 
     def get(self,request,*args,**kwargs):
@@ -214,14 +242,165 @@ class AddWishListItemView(View):
         return redirect("index")
         
 
-
+@method_decorator(decs,name="dispatch")
 class MyListWishListView(View):
 
     template_name="mywishlist.html"
 
     def get(self,request,*args,**kwargs):
 
-            qs=request.user.basket.basket_item.filter(is_order_placed=False)            
+            qs=request.user.basket.basket_item.filter(is_order_placed=False)    
 
-            return render(request,self.template_name,{"data":qs})
+            total=qs.values("project_object").aggregate(total=Sum("project_object__price")).get("total")
+
+            print("totalllll",total)        
+
+            return render(request,self.template_name,{"data":qs,"total":total})
+
+@method_decorator(decs,name="dispatch")
+class WishListItemDelete(View):
+
+    def get(self,request,*args,**kwargs):
+
+        id=kwargs.get("pk")
+
+        WishListItem.objects.get(id=id).delete()
+
+        return redirect("mywish")
+
+
+import razorpay
+@method_decorator(decs,name="dispatch")
+class CheckOutView(View):
+
+    template_name="checkout.html"
+
+    def get(self,request,*args,**kwargs):
+
+        # step1 razorpay authentication
+
+        KEY_ID=config("KEY_ID")
+
+        KEY_SECRET=config("KEY_SECRET")
+
+        client=razorpay.Client(auth=(KEY_ID,KEY_SECRET))
+
+        wish_list_total=request.user.basket.basket_item.filter(is_order_placed=False).values("project_object").aggregate(total=Sum("project_object__price")).get("total")
+
+        data={  "amount":wish_list_total*100, "currency":"INR", "receipt":"order_receipt_11"  }
+
+        payment=client.order.create(data=data)
+
+        order_id=payment.get("id")
+
+        order_obj=Order.objects.create(order_id=order_id,customer=request.user)
+
+        wishlist_item=request.user.basket.basket_item.filter(is_order_placed=False)
+
+        for wi in wishlist_item:
+
+            order_obj.wishlist_item_objects.add(wi)
+
+            wi.is_order_placed=True
+
+            wi.save()    
+
+                 
+
+        return render(request,self.template_name,{"key_id":KEY_ID,"amount":wish_list_total,"order_id":order_id})
+
+@method_decorator(csrf_exempt,name='dispatch')
+class PaymentVerificationView(View):
+
+    def post(self,request,*args,**kwargs):
+
+        print(request.POST)
+
+        KEY_ID=config("KEY_ID")
+
+        KEY_SECRET=config("KEY_SECRET")
+
+        client=razorpay.Client(auth=(KEY_ID,KEY_SECRET))
+
+        try:
+
+            client.utility.verify_payment_signature(request.POST)
+
+            order_id=request.POST.get("razorpay_order_id")
+            
+            obj=Order.objects.filter(order_id=order_id).update(is_paid=True)
+
+            send_email()
+
+            print("success")
+
+        except:
+
+            print("failed")
+
+        return redirect("myorder")
+
+
+@method_decorator(decs,name="dispatch")
+class MyOrderView(View):
+
+    template_name="myorders.html"
+
+    def get(self,request,*args,**kwargs):
+
+        qs=Order.objects.filter(customer=request.user)
+
+        return render(request,self.template_name,{"data":qs})
+
+from django.contrib.auth.models import User
+
+class PasswordResetView(View):
+
+
+
+    template_name="password_reset.html"
+
+    form_class=PasswordResetForm
+
+    def get(self,request,*args,**kwargs):
+
+        form_instance=self.form_class()
+
+        return render(request,self.template_name,{"form":form_instance})
+    
+    def post(self,request,*args,**kwargs):
+
+        form_instance=self.form_class(request.POST)
+
+        if form_instance.is_valid():
+
+            username=form_instance.cleaned_data.get("username")
+
+            email=form_instance.cleaned_data.get("email")
+
+            password1=form_instance.cleaned_data.get("password1")
+
+            password2=form_instance.cleaned_data.get("password2")
+
+            print(username,email,password1,password2)
+
+            try:
+
+                assert password1==password2,"Password Mismatch"
+
+                user_object=User.objects.get(username=username,email=email)
+
+                user_object.set_password(password2)
+
+                user_object.save()
+
+                return redirect("login")
+
+            except Exception as e:
+
+                messages.error(request,f"{e}")
+
+        return render(request,self.template_name,{"form":form_instance})
+
+
 
